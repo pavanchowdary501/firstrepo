@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  Pipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      Name: MyPipeline
+      RoleArn: !GetAtt PipelineRole.Arn
+      Stages:
+        - Name: Dev
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: '1'
+              Configuration:
+                Owner: my-github-org
+                Repo: my-github-repo
+                Branch: main
+                OAuthToken: !Ref GitHubToken
+              OutputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+            - Name: Deploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeDeployToECS
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceCode
+              Configuration:
+                ApplicationName: MyEcsApp
+                DeploymentGroupName: MyDeploymentGroup
+                Image1ArtifactName: !Join ['', [!Ref AWS::StackName, '-Image1']]
+                Image2ArtifactName: !Join ['', [!Ref AWS::StackName, '-Image2']]
+              RunOrder: 2
+          Blockers:
+            - Type: Schedule
+              Name: 'Dev Schedule'
+              ScheduleExpression: rate(1 day)
+        - Name: QA
+          Actions:
+            - Name: Approve
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+            - Name: Deploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeDeployToECS
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceCode
+              Configuration:
+                ApplicationName: MyEcsApp
+                DeploymentGroupName: MyDeploymentGroup
+                Image1ArtifactName: !Join ['', [!Ref AWS::StackName, '-Image1']]
+                Image2ArtifactName: !Join ['', [!Ref AWS::StackName, '-Image2']]
+              RunOrder: 2
+          Blockers:
+            - Type: Manual
+              Name: 'QA Approval'
+        - Name: UAT
+          Actions:
+            - Name: Approve
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+            - Name: Deploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeDeployToECS
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceCode
+              Configuration:
+                ApplicationName: MyEcsApp
+                DeploymentGroupName: MyDeploymentGroup
+                Image1ArtifactName: !Join ['', [!Ref AWS::StackName, '-Image1']]
+                Image2ArtifactName: !Join ['', [!Ref AWS::StackName, '-Image2']]
+              RunOrder: 2
+          Blockers:
+            - Type: Manual
+              Name: 'UAT Approval'
+        - Name: Prod
+          Actions:
+            - Name: Approve
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+           
